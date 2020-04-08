@@ -90,13 +90,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
 
     def action_add_first_triggerd(self):
-        print('add first')
         dialog = Dialog(self)
         dialog.signal_value.connect(self.add_first)
         dialog.exec()
     
     def add_first(self, value):
-        print(value)
         db = QSqlDatabase.addDatabase('QSQLITE')
         db.setDatabaseName(self.path + '/multiWeb_Database.db')
         if db.open():
@@ -111,13 +109,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.data_update()
 
     def action_add_second_triggerd(self):
-        print('add second')
         dialog = Dialog(self)
         dialog.signal_value.connect(self.add_second)
         dialog.exec()
 
     def add_second(self, value):
-        print(value)
         ID = self.index_to_sqlIndex_first_list[self.first_index-1]
         id_category_second_max = self.id_category_second_max_list[self.first_index-1]
         db = QSqlDatabase.addDatabase('QSQLITE')
@@ -131,13 +127,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.data_update()
 
     def action_add_webAddress_triggerd(self):
-        print('add webAddress')
         dialog = Dialog(self)
         dialog.signal_value.connect(self.add_webAddress)
         dialog.exec()
     
     def add_webAddress(self, value):
-        print(value)
         ID1 = self.index_to_sqlIndex_first_list[self.first_index-1]
         ID2 = self.index_to_sqlIndex_second_listes[self.first_index-1][self.second_index-1]
         db = QSqlDatabase.addDatabase('QSQLITE')
@@ -150,7 +144,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.data_update()
 
     def action_delete_first_triggerd(self, ID=None):
-        print('delete first')
         db = QSqlDatabase.addDatabase('QSQLITE')
         db.setDatabaseName(self.path + '/multiWeb_Database.db')
         if db.open():
@@ -189,7 +182,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 
 
     def action_delete_second_triggerd(self, ID1, ID2):
-        print('delete second')
         db = QSqlDatabase.addDatabase('QSQLITE')
         db.setDatabaseName(self.path + '/multiWeb_Database.db')
         if db.open():
@@ -231,7 +223,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         
 
     def action_delete_webAddress_triggerd(self):
-        print('delete webAddress')
         key = '({},{})'.format(self.first_index, self.second_index)
         key = self.indexTuple_to_sqlIndexTuple[key]
         index = self.sqlIndex_to_webAddress_listWidgetIndex[key]
@@ -262,7 +253,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         
     
     def listWidget_category_first_context(self, qpoint):
-        print('first')
         x = qpoint.x()
         y = qpoint.y()
         item = self.listWidget_category_first.itemAt(x, y)
@@ -270,7 +260,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             menu = QMenu()
             item1 = menu.addAction(self.action_add_first)
             item2 = menu.addAction(self.action_delete_first)
-            print(item.text())
             menu.exec_(self.listWidget_category_first.mapToGlobal(qpoint))
         else:
             menu = QMenu()
@@ -279,7 +268,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
 
     def listWidget_category_second_context(self, qpoint):
-        print('second')
         x = qpoint.x()
         y = qpoint.y()
         listWidget = self.listWidget_category_list[self.first_index-1]
@@ -288,7 +276,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             menu = QMenu()
             item1 = menu.addAction(self.action_add_second)
             item2 = menu.addAction(self.action_delete_second)
-            print(item.text())
             action = menu.exec_(listWidget.mapToGlobal(qpoint))
         else:
             menu = QMenu()
@@ -297,7 +284,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
 
     def listWidget_webAddress_context(self, qpoint):
-        print('webAddress')
         x = qpoint.x()
         y = qpoint.y()
         key = '({},{})'.format(self.first_index, self.second_index)
@@ -309,7 +295,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             menu = QMenu()
             item1 = menu.addAction(self.action_add_webAddress)
             item2 = menu.addAction(self.action_delete_webAddress)
-            print(item.text())
             action = menu.exec_(listWidget.mapToGlobal(qpoint))
         else:
             menu = QMenu()
