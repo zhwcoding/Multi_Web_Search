@@ -122,7 +122,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             query = QSqlQuery(db)
             for i in range(value):
                 query.exec('insert into category{} values({}, "{}")'.format(ID, i + id_category_second_max + 1, 'xxx'))
-                query.exec('insert into webAddress values({}, "{}", "{}", {}, {})'.format(i + self.id_webAddress_max + 1, 'xxx', 'https://xxx', ID, index))
+                query.exec('insert into webAddress values({}, "{}", "{}", {}, {})'.format(i + self.id_webAddress_max + 1, 'xxx', 'https://xxx', ID, i + id_category_second_max + 1))
             db.close()
         self.data_update()
 
@@ -517,7 +517,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             query.exec('create table category(id int primary key, name vhar)')
             query.exec('create table category1(id int primary key, name vhar)')
             query.exec('create table history(id int primary key, name vhar, url vhar)')
-            query.exec('insert into webAddress values(1, "网址条目(搜狗搜索页)", "https://www.sogou.com/tx?query={}", 1, 1)')
+            query.exec('insert into webAddress values(1, "网址条目(百度搜素)", "https://www.baidu.com/s?wd={}", 1, 1)')
             query.exec('insert into category values(1, "一级目录(示例)")')
             query.exec('insert into category1 values(1, "二级目录(示例)")')
         db.close()
