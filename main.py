@@ -139,7 +139,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         dialog.signal_value.connect(self.add_webAddress)
         dialog.exec()
     
-    
+
     def add_webAddress(self, value):
         ID1 = self.index_to_sqlIndex_first_list[self.first_index-1]
         ID2 = self.index_to_sqlIndex_second_listes[self.first_index-1][self.second_index-1]
@@ -206,13 +206,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     if sign1 == 1:
                         ID1 = Id1s[self.first_index-1]
                         ID = IDs[self.second_index-1]
-                        ID2 = self.index_to_sqlIndex_second_listes[self.first_index-1]
                         query.exec('delete from category{} where id={}'.format(ID1, ID))
                         for i in webIDs:
                             query.exec('delete from webAddress where id={}'.format(i))
                         if sign2 == 1024:
-                            query.exec('drop table if exists category{}'.format(ID))
-                            self.action_delete_first_triggerd(ID)
+                            query.exec('drop table if exists category{}'.format(ID1))
+                            self.action_delete_first_triggerd(ID1)
                     self.database_query(False)
                     self.data_update()
             else:
@@ -489,7 +488,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             text_add += '    - {}\n'.format(webAddress)
         if not text_add in text:
             text += text_add
+        self.textEdit.cursorPositionChanged.disconnect(self.textEdit_text_changed)  # 非用户手动修改不弹出提示
         self.textEdit.setText(text)
+        self.textEdit.cursorPositionChanged.connect(self.textEdit_text_changed)
 
 
     def generate_origin_database(self):
