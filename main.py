@@ -1,5 +1,5 @@
 from PyQt5.QtCore import pyqtSignal, Qt
-from PyQt5.QtWidgets import QApplication, QMessageBox, QMainWindow, QDialog, QMenu, QAction, QFileDialog
+from PyQt5.QtWidgets import QApplication, QMessageBox, QMainWindow, QDialog, QMenu, QAction, QFileDialog, QStackedWidget
 from PyQt5.QtSql import QSqlDatabase, QSqlQuery
 
 import os
@@ -29,6 +29,7 @@ class Dialog(QDialog, Ui_Dialog):
 
 class MainWindow(QMainWindow, Ui_MainWindow):
     signal = pyqtSignal(list, str)  # 向网页显示页界面发送 网址列表，搜索文字 的信号 
+    signal_change_stackedWidget = pyqtSignal()   # 切换到显示网页界面
 
     '''生成搜素首页'''
     def __init__(self, parent=None):
@@ -159,7 +160,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 index = self.indexTuple_to_webAddress_listWidetIndex[key]
                 listWidget = self.listWidget_webAddress_list[index-1]
                 webIDs = self.indexTuple_to_webAddressIDLIST[key]
-                sign = QMessageBox.information(self, '提醒', '此操作将会删除该目录下所有子目录\n确定删除吗', QMessageBox.Ok)
+                sign = QMessageBox.information(self, '提醒', '此操作将会删除该目录下所有子目录\n确定删除吗', QMessageBox.Ok, QMessageBox.Cancel)
                 if sign == 1024:
                     if len(self.index_to_sqlIndex_first_list) != 1:
                         query.exec('delete from category where id={}'.format(ID))
@@ -378,8 +379,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     # 当搜索框回车激活的函数
     def lineEdit_search_enterd(self):
-        self.setVisible(False)  # 搜索框回车后，弹出网页界面的显示，使首页面设置为不可见
         self.signal.emit(self.current_webAddress_list, self.lineEdit_search.text()) # 发送网站名网址，以及要搜索的文字
+        self.signal_change_stackedWidget.emit() # 显示网页显示界面
 
     # 当一级目录listWidget中的item被双击时
     def listWidget_category_first_double(self):
@@ -700,16 +701,21 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
+    stackedWidget = QStackedWidget()
+    stackedWidget.resize(1200, 900)
+    stackedWidget.setWindowTitle('多网页搜索工具')
+    
     web = Web()
-    web.setWindowTitle('网页')
     mainWindow = MainWindow()
-    mainWindow.setWindowTitle('多网页搜索工具')
 
+    stackedWidget.addWidget(mainWindow)
+    stackedWidget.addWidget(web)
+
+    mainWindow.signal_change_stackedWidget.connect(lambda : stackedWidget.setCurrentIndex(1))
     mainWindow.signal.connect(web.add_new_tab)
-    web.signal.connect(lambda : mainWindow.setVisible(True))
+    web.signal_change_stackedWidget.connect(lambda : stackedWidget.setCurrentIndex(0))
 
-    web.show()
-    web.setVisible(False)
-    mainWindow.show()
+    stackedWidget.show()
+
     sys.exit(app.exec_())
 

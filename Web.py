@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QListWidget, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QSplitter, QApplication
+from PyQt5.QtWidgets import QListWidget, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QSplitter, QApplication, QMessageBox
 from PyQt5.QtSql import QSqlDatabase, QSqlQuery
 from PyQt5.QtCore import pyqtSignal, Qt, QUrl
 from PyQt5.QtGui import QIcon
@@ -15,7 +15,7 @@ import delete_history_image
 
 
 class Web(QMainWindow, Ui_ShowWeb):
-    signal = pyqtSignal()
+    signal_change_stackedWidget = pyqtSignal()
 
     '''生成批量浏览网页的界面 '''
     def __init__(self, parent=None):
@@ -45,8 +45,7 @@ class Web(QMainWindow, Ui_ShowWeb):
         self.action_delete_history.triggered.connect(self.action_delete_history_triggerd)
 
     def action_back_triggerd(self):
-        self.signal.emit()
-        self.setVisible(False)
+        self.signal_change_stackedWidget.emit()
 
     def action_delete_history_triggerd(self):
         sign = QMessageBox.information(self, '删除历史记录', '是否删除所有历史记录\n删除后无法找回', QMessageBox.Ok)
@@ -122,8 +121,7 @@ class Web(QMainWindow, Ui_ShowWeb):
     def tab_close(self, i):
         self.tabWidget.removeTab(i)
         if self.tabWidget.count() < 1:
-            self.setVisible(False)
-            self.signal.emit()
+            self.signal_change_stackedWidget.emit()
         
 
     def add_new_tab(self, webAddress_name_list, text):
@@ -141,6 +139,9 @@ class Web(QMainWindow, Ui_ShowWeb):
         splitter.addWidget(listWidget)
         splitter.addWidget(browser)
         splitter.addWidget(self.listWidget_history)
+        splitter.setStretchFactor(0, 2)
+        splitter.setStretchFactor(1, 8)
+        splitter.setStretchFactor(2, 1)
         layout_h.addWidget(lineEdit_url)
         layout_h.addWidget(pushButton_copy)
         layout.addLayout(layout_h)
