@@ -1,7 +1,5 @@
-from PyQt5.QtCore import *
-from PyQt5.QtWidgets import *
-from PyQt5.QtGui import *
-from PyQt5.QtWebEngineWidgets import *
+from PyQt5.QtCore import pyqtSignal, Qt
+from PyQt5.QtWidgets import QApplication, QMessageBox, QMainWindow, QDialog, QMenu, QAction, QFileDialog
 from PyQt5.QtSql import QSqlDatabase, QSqlQuery
 
 import os
@@ -10,8 +8,7 @@ import sys
 from Ui_mainWindow import Ui_MainWindow
 from Ui_dialog import Ui_Dialog
 
-from custom_widget import  ListWidget
-
+from custom_widget import ListWidget
 from Worker import Worker
 from Web import Web
 
@@ -48,6 +45,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.categoryi = [] # 用于保存从数据库中读取的二级目录(二维数组)
         self.index_to_sqlIndex_first_list = []   # 将一级目录的id按顺序记录下来，在更换数据顺序中会用到
         self.index_to_sqlIndex_second_listes = []    # 将二级目录的id按顺序记录下来（二维数组）
+
         self.id_category_first_max = 0  # 一级目录id的最大值
         self.id_category_second_max_list = []   # 各二级目录id最大值的列表
         self.id_webAddress_max = 0  # 网址id的最大值
@@ -56,10 +54,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.listWidget_webAddress_list = []    # 保存stackedWidget_2的每页的listWidget
         self.current_webAddress_list = []   # 当前stackedWidget_2页面上listWidget上的网址列表，方便直接发送给显示界面
 
-        self.indexTuple_to_sqlIndexTuple = {} # 前面两个listWidget的序数所组成的index组合所对应其在数据库中的index组合
-        self.sqlIndex_to_webAddress_listWidgetIndex = {}      # 其在数据库中的index组合所对应的webAddress ListWidget在stackedWidget的序数
-        self.sqlIndexTuple_to_WebAddressIDLIST = {} #数据库index组合所对应的webAddressIDlist,如{'(1,1)':[2,3], '(1,2):[4,5,6,7]}
-        self.sqlIndexTuple_to_webAddress = {}   # 数据库index组合所对应的webAddress，如{'(1,1)':['https://...','https://...'], '(1,2)':['','']}
+        self.indexTuple_to_webAddress_listWidetIndex = {}   # index组合所对应的webAddress ListWidget在stackedWidget的序数
+        self.indexTuple_to_webAddressIDLIST = {}    #index组合所对应的webAddressIDlist,如{'(1,1)':[2,3], '(1,2):[4,5,6,7]}
+        self.indexTuple_to_webAddress_list = {}     # index组合所对应的webAddress，如{'(1,1)':['xxx-----https://...','xxx-----https://...'], '(1,2)':['','']} 
 
         self.first_index = 1    # 一级目录的当前index
         self.second_index = 1   # 二级目录的当前index
@@ -68,8 +65,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.path = './db'  # 数据库位置
         # 加载数据库数据， 加载stackedWidget的子分支界面
         self.load_Database()
-        self.load_stackWidget1(self.category)
-        self.load_stackWidget2(self.categoryi)
+        self.load_stackWidget1()
+        self.load_stackWidget2()
 
         self.listWidget_category_first.currentRowChanged.connect(self.category_widget_changed)
         self.listWidget_category_first.signal.connect(self.listWidget_category_first_drop)
@@ -88,24 +85,36 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.pushButton_cancel.clicked.connect(self.pushButton_cancel_clicked)
 
 
+    # 获取数据库的操作权限，关闭数据库连接
+    def database_query(self, sign=True):
+        if sign:
+            self.db = QSqlDatabase.addDatabase('QSQLITE')
+            self.db.setDatabaseName(self.path + '/multiWeb_Database.db')
+            if self.db.open():
+                self.query = QSqlQuery(self.db)
+                return self.query, True
+            else:
+                return _, False
+        else:
+            self.db.close()
+
 
     def action_add_first_triggerd(self):
         dialog = Dialog(self)
         dialog.signal_value.connect(self.add_first)
         dialog.exec()
     
+
     def add_first(self, value):
-        db = QSqlDatabase.addDatabase('QSQLITE')
-        db.setDatabaseName(self.path + '/multiWeb_Database.db')
-        if db.open():
-            query = QSqlQuery(db)
+        query, sign = self.database_query()
+        if sign:
             for i in range(value):
                 index = i + self.id_category_first_max + 1
                 query.exec('insert into category values({}, "{}")'.format(index, 'xxx'))
                 query.exec('create table category{}(id int, name vhar)'.format(index))
                 query.exec('insert into category{} values(1, "{}")'.format(index, 'xxx'))
                 query.exec('insert into webAddress values({}, "{}", "{}", {}, {})'.format(i + self.id_webAddress_max + 1, 'xxx', 'https://xxx', index, 1))
-            db.close()
+            self.database_query(False)
         self.data_update()
 
     def action_add_second_triggerd(self):
@@ -113,17 +122,16 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         dialog.signal_value.connect(self.add_second)
         dialog.exec()
 
+
     def add_second(self, value):
         ID = self.index_to_sqlIndex_first_list[self.first_index-1]
         id_category_second_max = self.id_category_second_max_list[self.first_index-1]
-        db = QSqlDatabase.addDatabase('QSQLITE')
-        db.setDatabaseName(self.path + '/multiWeb_Database.db')
-        if db.open():
-            query = QSqlQuery(db)
+        query, sign = self.database_query()
+        if sign:
             for i in range(value):
                 query.exec('insert into category{} values({}, "{}")'.format(ID, i + id_category_second_max + 1, 'xxx'))
                 query.exec('insert into webAddress values({}, "{}", "{}", {}, {})'.format(i + self.id_webAddress_max + 1, 'xxx', 'https://xxx', ID, i + id_category_second_max + 1))
-            db.close()
+            self.database_query(False)
         self.data_update()
 
     def action_add_webAddress_triggerd(self):
@@ -131,104 +139,96 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         dialog.signal_value.connect(self.add_webAddress)
         dialog.exec()
     
+    
     def add_webAddress(self, value):
         ID1 = self.index_to_sqlIndex_first_list[self.first_index-1]
         ID2 = self.index_to_sqlIndex_second_listes[self.first_index-1][self.second_index-1]
-        db = QSqlDatabase.addDatabase('QSQLITE')
-        db.setDatabaseName(self.path + '/multiWeb_Database.db')
-        if db.open():
-            query = QSqlQuery(db)
+        query, sign = self.database_query()
+        if sign:
             for i in range(value):
                 query.exec('insert into webAddress values({}, "{}", "{}", {}, {})'.format(i + self.id_webAddress_max + 1, 'xxx', 'https://xxx', ID1, ID2))
-            db.close()
+            self.database_query(False)
         self.data_update()
 
     def action_delete_first_triggerd(self, ID=None):
-        db = QSqlDatabase.addDatabase('QSQLITE')
-        db.setDatabaseName(self.path + '/multiWeb_Database.db')
-        if db.open():
-            query = QSqlQuery(db)
-        if ID == None:
-            ID = self.index_to_sqlIndex_first_list[self.first_index-1]
-            key = '({},{})'.format(self.first_index, self.second_index)
-            key = self.indexTuple_to_sqlIndexTuple[key]
-            index = self.sqlIndex_to_webAddress_listWidgetIndex[key]
-            listWidget = self.listWidget_webAddress_list[index-1]
-            webIDs = self.sqlIndexTuple_to_WebAddressIDLIST[key]
-            sign = QMessageBox.information(self, '提醒', '此操作将会删除该目录下所有子目录\n确定删除吗', QMessageBox.Ok)
-            if sign == 1024:
+        query, sign = self.database_query()
+        if sign:
+            if ID == None:
+                ID = self.index_to_sqlIndex_first_list[self.first_index-1]
+                key = '({},{})'.format(self.first_index, self.second_index)
+                index = self.indexTuple_to_webAddress_listWidetIndex[key]
+                listWidget = self.listWidget_webAddress_list[index-1]
+                webIDs = self.indexTuple_to_webAddressIDLIST[key]
+                sign = QMessageBox.information(self, '提醒', '此操作将会删除该目录下所有子目录\n确定删除吗', QMessageBox.Ok)
+                if sign == 1024:
+                    if len(self.index_to_sqlIndex_first_list) != 1:
+                        query.exec('delete from category where id={}'.format(ID))
+                        query.exec('drop table if exists category{}'.format(ID))
+                        for Id in webIDs:
+                            query.exec('delete from webAddress where id={}'.format(Id))
+                    else:
+                        query.exec('delete from category where id={}'.format(ID))
+                        QMessageBox.critical(self, '错误', '当前主分类仅有一条，将自动创建一条', QMessageBox.Ok)
+                        self.database_query(False)
+                        os.remove(self.path + '/multiWeb_Database.db')
+                        self.generate_origin_database()
+                    self.database_query(False)
+                    self.data_update()
+            else:
                 if len(self.index_to_sqlIndex_first_list) != 1:
                     query.exec('delete from category where id={}'.format(ID))
-                    query.exec('drop table if exists category{}'.format(ID))
-                    for Id in webIDs:
-                        query.exec('delete from webAddress where id={}'.format(Id))
                 else:
                     query.exec('delete from category where id={}'.format(ID))
-                    QMessageBox.critical(self, '错误', '当前主分类仅有一条，将自动创建一条', QMessageBox.Ok)
-                    db.close()
+                    QMessageBox.critical(self, '错误', '当前所有分类仅有一条，将自动创建一条', QMessageBox.Ok)
+                    self.database_query(False)
                     os.remove(self.path + '/multiWeb_Database.db')
                     self.generate_origin_database()
-                db.close()
-                self.data_update()
-        else:
-            if len(self.index_to_sqlIndex_first_list) != 1:
-                query.exec('delete from category where id={}'.format(ID))
-            else:
-                query.exec('delete from category where id={}'.format(ID))
-                QMessageBox.critical(self, '错误', '当前所有分类仅有一条，将自动创建一条', QMessageBox.Ok)
-                db.close()
-                os.remove(self.path + '/multiWeb_Database.db')
-                self.generate_origin_database()
                 
 
     def action_delete_second_triggerd(self, ID1, ID2):
-        db = QSqlDatabase.addDatabase('QSQLITE')
-        db.setDatabaseName(self.path + '/multiWeb_Database.db')
-        if db.open():
-            query = QSqlQuery(db)
-        if ID1 == None and ID2 == None:
-            Id1s = self.index_to_sqlIndex_first_list
-            IDs = self.index_to_sqlIndex_second_listes[self.first_index-1]
-            key = '({},{})'.format(self.first_index, self.second_index)
-            key = self.indexTuple_to_sqlIndexTuple[key]
-            index = self.sqlIndex_to_webAddress_listWidgetIndex[key]
-            listWidget = self.listWidget_webAddress_list[index-1]
-            webIDs = self.sqlIndexTuple_to_WebAddressIDLIST[key]
-            sign1 = 1
-            sign2 = 0
-            sign3 = QMessageBox.information(self, '提醒', '此操作将会删除该目录下的所有条目\n删除后将无法找回\n确定删除吗', QMessageBox.Ok, QMessageBox.Cancel)
-            if sign3 == 1024:
-                if len(IDs) == 1:
-                    sign2 = QMessageBox.information(self, '提醒', '此目录下仅有此一条\n将会将此上级目录一并删除\n确定删除吗', QMessageBox.Ok, QMessageBox.Cancel)
-                if sign2 == 4194304:
-                    sign1 = 0
-                if sign1 == 1:
-                    ID1 = Id1s[self.first_index-1]
-                    ID = IDs[self.second_index-1]
-                    ID2 = self.index_to_sqlIndex_second_listes[self.first_index-1]
-                    query.exec('delete from category{} where id={}'.format(ID1, ID))
-                    for i in webIDs:
-                        query.exec('delete from webAddress where id={}'.format(i))
-                    if sign2 == 1024:
-                        query.exec('drop table if exists category{}'.format(ID))
-                        self.action_delete_first_triggerd(ID)
-                db.close()
-                self.data_update()
-        else:
-            query.exec('delete from category{} where id={}'.format(ID1, ID2))
-            if len(self.index_to_sqlIndex_second_listes[self.first_index-1]) == 1:
-                query.exec('drop table if exists category{}'.format(ID1))
-                self.action_delete_first_triggerd(ID1)
-                db.close()
+        query, sign = self.database_query()
+        if sign:
+            if ID1 == None and ID2 == None:
+                Id1s = self.index_to_sqlIndex_first_list
+                IDs = self.index_to_sqlIndex_second_listes[self.first_index-1]
+                key = '({},{})'.format(self.first_index, self.second_index)
+                index = self.indexTuple_to_webAddress_listWidetIndex[key]
+                listWidget = self.listWidget_webAddress_list[index-1]
+                webIDs = self.indexTuple_to_webAddressIDLIST[key]
+                sign1 = 1
+                sign2 = 0
+                sign3 = QMessageBox.information(self, '提醒', '此操作将会删除该目录下的所有条目\n删除后将无法找回\n确定删除吗', QMessageBox.Ok, QMessageBox.Cancel)
+                if sign3 == 1024:
+                    if len(IDs) == 1:
+                        sign2 = QMessageBox.information(self, '提醒', '此目录下仅有此一条\n将会将此上级目录一并删除\n确定删除吗', QMessageBox.Ok, QMessageBox.Cancel)
+                    if sign2 == 4194304:
+                        sign1 = 0
+                    if sign1 == 1:
+                        ID1 = Id1s[self.first_index-1]
+                        ID = IDs[self.second_index-1]
+                        ID2 = self.index_to_sqlIndex_second_listes[self.first_index-1]
+                        query.exec('delete from category{} where id={}'.format(ID1, ID))
+                        for i in webIDs:
+                            query.exec('delete from webAddress where id={}'.format(i))
+                        if sign2 == 1024:
+                            query.exec('drop table if exists category{}'.format(ID))
+                            self.action_delete_first_triggerd(ID)
+                    self.database_query(False)
+                    self.data_update()
+            else:
+                query.exec('delete from category{} where id={}'.format(ID1, ID2))
+                if len(self.index_to_sqlIndex_second_listes[self.first_index-1]) == 1:
+                    query.exec('drop table if exists category{}'.format(ID1))
+                    self.action_delete_first_triggerd(ID1)
+                    self.database_query(False)
         
 
     def action_delete_webAddress_triggerd(self):
         key = '({},{})'.format(self.first_index, self.second_index)
-        key = self.indexTuple_to_sqlIndexTuple[key]
-        index = self.sqlIndex_to_webAddress_listWidgetIndex[key]
+        index = self.indexTuple_to_webAddress_listWidetIndex[key]
         listWidget = self.listWidget_webAddress_list[index-1]
         row = listWidget.currentRow()
-        webIDs = self.sqlIndexTuple_to_WebAddressIDLIST[key]
+        webIDs = self.indexTuple_to_webAddressIDLIST[key]
         sign1 = 1
         sign2 = 0
         sign3 = QMessageBox.information(self, '提醒', '此操作将删除该条目\n删除后将无法找回\n确定删除吗', QMessageBox.Ok, QMessageBox.Cancel)
@@ -241,14 +241,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 id_category_first = self.index_to_sqlIndex_first_list[self.first_index-1]
                 id_category_second = self.index_to_sqlIndex_second_listes[self.first_index-1][self.second_index-1]
                 webID = webIDs[row]
-                db = QSqlDatabase.addDatabase('QSQLITE')
-                db.setDatabaseName(self.path + '/multiWeb_Database.db')
-                if db.open():
-                    query = QSqlQuery(db)
+                query, sign = self.database_query()
+                if sign:
                     query.exec('delete from webAddress where id={}'.format(webID))
                     if sign2 == 1024:
                         self.action_delete_second_triggerd(id_category_first, id_category_second)
-                db.close()
+                self.database_query(False)
                 self.data_update()
         
     
@@ -287,8 +285,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         x = qpoint.x()
         y = qpoint.y()
         key = '({},{})'.format(self.first_index, self.second_index)
-        key = self.indexTuple_to_sqlIndexTuple[key]
-        index = self.sqlIndex_to_webAddress_listWidgetIndex[key]
+        index = self.indexTuple_to_webAddress_listWidetIndex[key]
         listWidget = self.listWidget_webAddress_list[index-1]
         item = listWidget.itemAt(x, y)
         if item:
@@ -301,15 +298,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             item = menu.addAction(self.action_add_webAddress)
             menu.exec_(listWidget.mapToGlobal(qpoint))
 
+    # 一级目录的拖拽排序
     def listWidget_category_first_drop(self, index1, index2):
         id1 = self.index_to_sqlIndex_first_list[index1]
         id2 = self.index_to_sqlIndex_first_list[index2]
         name1 = ''
         name2 = ''
-        db = QSqlDatabase.addDatabase('QSQLITE')
-        db.setDatabaseName(self.path + '/multiWeb_Database.db')
-        if db.open():
-            query = QSqlQuery(db)
+        query, sign = self.database_query()
+        if sign:
             query.exec('select * from category where id={}'.format(id1))
             while query.next():
                 name1 = query.value(1)
@@ -321,19 +317,18 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             query.exec('update category set id=0 where id={}'.format(id1))
             query.exec('update category set id={} where id={}'.format(id1, id2))
             query.exec('update category set id={} where id=0'.format(id2))
-        db.close()
+        self.database_query(False)
         self.data_update()
 
+    # 二级目录的拖拽排序
     def listWidget_category_second_drop(self, index1, index2):
         id1 = self.index_to_sqlIndex_second_listes[self.first_index-1][index1]
         id2 = self.index_to_sqlIndex_second_listes[self.first_index-1][index2]
         index = self.index_to_sqlIndex_first_list[self.first_index-1]
         name1 = ''
         name2 = ''
-        db = QSqlDatabase.addDatabase('QSQLITE')
-        db.setDatabaseName(self.path + '/multiWeb_Database.db')
-        if db.open():
-            query = QSqlQuery(db)
+        query, sign = self.database_query()
+        if sign:
             query.exec('select * from category{} where id={}'.format(index, id1))
             while query.next():
                 name1 = query.value(1)
@@ -345,24 +340,21 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             query.exec('update category{} set id=0 where id={}'.format(index, id1))
             query.exec('update category{} set id={} where id={}'.format(index, id1, id2))
             query.exec('update category{} set id={} where id=0'.format(index, id2))
-        db.close()
-        self.data_update()
+        self.database_query(False)
         self.data_update()
 
+    # 条目的拖拽排序
     def listWidget_webAddress_drop(self, index1, index2):
         key = '({},{})'.format(self.first_index, self.second_index)
-        key = self.indexTuple_to_sqlIndexTuple[key]
-        webIDs = self.sqlIndexTuple_to_WebAddressIDLIST[key]
+        webIDs = self.indexTuple_to_webAddressIDLIST[key]
         id1 = webIDs[index1]
         id2 = webIDs[index2]
         name1 = ''
         name2 = ''
         url1 = ''
         url2 = ''
-        db = QSqlDatabase.addDatabase('QSQLITE')
-        db.setDatabaseName(self.path + '/multiWeb_Database.db')
-        if db.open():
-            query = QSqlQuery(db)
+        query, sign = self.database_query()
+        if sign:
             query.exec('select name, url from webAddress where id={}'.format(id1))
             while query.next():
                 name1 = query.value(0)
@@ -378,13 +370,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             query.exec('update webAddress set id=0 where id={}'.format(id1))
             query.exec('update webAddress set id={} where id={}'.format(id1, id2))
             query.exec('update webAddress set id={} where id=0'.format(id2))
-
-        db.close()
+        self.database_query(False)
         self.data_update()
 
     def textEdit_text_changed(self):
         QMessageBox.information(self, '提醒', '如果您需要手动更改下方文本框内容，请按正确格式，否则会发生意想不到的错误\n一级分类，二级分类，条目的"-"符号前依次为0,2,4个空格(只能是空格，请不要自动对齐)\n每行结尾无空格\n网站名称与网址之间用五个“-”连接', QMessageBox.Ok)
-        self.textEdit.textChanged.disconnect(self.textEdit_text_changed)
+        self.textEdit.cursorPositionChanged.disconnect(self.textEdit_text_changed)
 
     # 当搜索框回车激活的函数
     def lineEdit_search_enterd(self):
@@ -396,11 +387,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         def change_item(item):
             newItemName = item.text()
             if newItemName:
-                db = QSqlDatabase.addDatabase('QSQLITE')
-                db.setDatabaseName(self.path + '/multiWeb_Database.db')
-                if db.open():
-                    db.exec('update category set name="{}" where id={}'.format(newItemName, self.first_index))
-                db.close()
+                query, sign = self.database_query()
+                if sign:
+                    query.exec('update category set name="{}" where id={}'.format(newItemName, self.first_index))
+                self.database_query(False)
             else:
                 QMessageBox.critical(self, '错误', '输入不能为空', QMessageBox.Ok)
                 self.listWidget_category_first.item(currentRow).setText(text)
@@ -417,11 +407,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         def change_item(currentItem):
             newItemName = currentItem.text()
             if newItemName:
-                db = QSqlDatabase.addDatabase('QSQLITE')
-                db.setDatabaseName(self.path + '/multiWeb_Database.db')
-                if db.open():
-                    db.exec('update category{} set name="{}" where id={}'.format(self.first_index, newItemName, self.second_index))
-                db.close()
+                query, sign = self.database_query()
+                if sign:
+                    query.exec('update category{} set name="{}" where id={}'.format(self.first_index, newItemName, self.second_index))
+                self.database_query(False)
             else:
                 QMessageBox.critical(self, '错误', '输入不能为空', QMessageBox.Ok)
                 listWidget.item(currentRow).setText(text)
@@ -443,12 +432,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     url = newItemName.split('-----')[-1]
                     listWidget.closePersistentEditor(currentItem)
                     self.current_webAddress_list[currentRow] = name + '-----' + url
-                    db = QSqlDatabase.addDatabase('QSQLITE')
-                    db.setDatabaseName(self.path + '/multiWeb_Database.db')
-                    if db.open():
-                        db.exec('update webAddress set name="{}" where id={}'.format(name, id_index))
-                        db.exec('update webAddress set url="{}" where id={}'.format(url, id_index))
-                    db.close()
+                    query, sign = self.database_query()
+                    if sign:
+                        query.exec('update webAddress set name="{}" where id={}'.format(name, id_index))
+                        query.exec('update webAddress set url="{}" where id={}'.format(url, id_index))
+                    self.database_query(False)
                 else:
                     QMessageBox.critical(self, '错误', '网址名称与网址之间请用5个"-"连接', QMessageBox.Ok)
                     listWidget.item(currentRow).setText(txt)
@@ -458,13 +446,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         QMessageBox.information(self, '提醒', '您正在进行编辑操作\n请按照示例的正确格式更改\n再次双击退出编辑', QMessageBox.Ok)
         key = '({},{})'.format(self.first_index, self.second_index)
-        key = self.indexTuple_to_sqlIndexTuple[key]
-        index = self.sqlIndex_to_webAddress_listWidgetIndex[key]
+        index = self.indexTuple_to_webAddress_listWidetIndex[key]
         listWidget = self.listWidget_webAddress_list[index-1]
         currentItem = listWidget.currentItem()
         txt = currentItem.text()
         currentRow = listWidget.currentRow()
-        id_index = self.sqlIndexTuple_to_WebAddressIDLIST[key][currentRow]
+        id_index = self.indexTuple_to_webAddressIDLIST[key][currentRow]
 
         currentItem.setFlags(currentItem.flags() | Qt.ItemIsEditable)
         listWidget.editItem(currentItem)
@@ -485,14 +472,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         i = i+ 1
         self.second_index = i
         key = '({},{})'.format(self.first_index, self.second_index)
-        key = self.indexTuple_to_sqlIndexTuple[key]
-        index = self.sqlIndex_to_webAddress_listWidgetIndex[key]
-        self.current_webAddress_list = self.sqlIndexTuple_to_webAddress[key]
+        index = self.indexTuple_to_webAddress_listWidetIndex[key]
+        self.current_webAddress_list = self.indexTuple_to_webAddress_list[key]
         self.stackedWidget_2.setCurrentIndex(index)
         if self.sign_out == 1:  # 如果此时是导出状态，执行写入文本框的操作
             self.add_to_textEdit()
     
-
     # 导出时，点击item，自动写入下方文本框的函数
     def add_to_textEdit(self):
         text = self.textEdit.toPlainText()
@@ -504,15 +489,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             text_add += '    - {}\n'.format(webAddress)
         if not text_add in text:
             text += text_add
-        self.textEdit.textChanged.disconnect(self.textEdit_text_changed)    # 不是手动更改时不提示
         self.textEdit.setText(text)
-        self.textEdit.textChanged.connect(self.textEdit_text_changed)
+
 
     def generate_origin_database(self):
-        db = QSqlDatabase.addDatabase('QSQLITE')
-        db.setDatabaseName(self.path + '/multiWeb_Database.db')
-        if db.open():
-            query = QSqlQuery(db)
+        query, sign = self.database_query()
+        if sign:
             query.exec('create table webAddress(id int primary key, name vhar, url vchar, category_first int, category_second int)')
             query.exec('create table category(id int primary key, name vhar)')
             query.exec('create table category1(id int primary key, name vhar)')
@@ -520,22 +502,19 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             query.exec('insert into webAddress values(1, "网址条目(百度搜素)", "https://www.baidu.com/s?wd={}", 1, 1)')
             query.exec('insert into category values(1, "一级目录(示例)")')
             query.exec('insert into category1 values(1, "二级目录(示例)")')
-        db.close()
+        self.database_query(False)
+
     # 加载数据库函数
     def load_Database(self):
         sign = 0    # 用于判断db文件夹是否存在，一般第一次运行是没有的，则新建文件夹，并新建数据库
         if not os.path.exists(self.path):
             os.mkdir(self.path)
-            sign = 1
         if not os.path.exists(self.path + '/multiWeb_Database.db'):
             sign = 1
         if sign:
             self.generate_origin_database()
-        db = QSqlDatabase.addDatabase('QSQLITE')
-        db.setDatabaseName(self.path + '/multiWeb_Database.db')
-        if db.open():
-            query = QSqlQuery(db)
-
+        query, sign1 = self.database_query()
+        if sign1:
             query.exec('select * from category')
             while query.next():
                 index = query.value(0)
@@ -568,26 +547,33 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     s = query.value(i)
                     webs.append(s)
                 webAddress.append(webs)
-            db.close()
+            self.database_query(False)
             self.id_webAddress_max = max(webAddress[0])
             # 将数组转置，还原为数据库中的横向显示样式
             webAddress = [[row[i] for row in webAddress] for i in range(len(webAddress[0]))]
-            # 创建Sql的indexTuple与name+网址的映射字典， 以及其与条目id的映射字典
+            # 创建Sql的indexTuple与name+url的映射字典， 以及其与条目id的映射字典
+
+            sqlIndexTuple_to_WebAddressID_list = {} 
+            sqlIndexTuple_to_webAddress_list = {}  
             for row in webAddress:
                 index = '({},{})'.format(row[3], row[4])
-                if index not in self.sqlIndexTuple_to_webAddress.keys():
-                    self.sqlIndexTuple_to_webAddress[index] = []
-                    self.sqlIndexTuple_to_WebAddressIDLIST[index] = []
-                self.sqlIndexTuple_to_webAddress[index].append(row[1] + '-----' + row[2])
-                self.sqlIndexTuple_to_WebAddressIDLIST[index].append(row[0])
-            # 创建listWidget的indexTuple与sql的indexTuple的映射字典
+                if index not in sqlIndexTuple_to_webAddress_list.keys():
+                    sqlIndexTuple_to_webAddress_list[index] = []
+                    sqlIndexTuple_to_WebAddressID_list[index] = []
+                sqlIndexTuple_to_webAddress_list[index].append(row[1] + '-----' + row[2])
+                sqlIndexTuple_to_WebAddressID_list[index].append(row[0])
+
+            # 创建listWidget的indexTuple --> sqlIndexTuple, indexTuple --> webAddressList, indexTuple --> webAddressIDLISR 的字典
             for index, sqlIndex in enumerate(self.index_to_sqlIndex_first_list):
                 index_to_sqlIndex_list = self.index_to_sqlIndex_second_listes[index]
                 for ind, sqlInd in enumerate(index_to_sqlIndex_list):
-                    self.indexTuple_to_sqlIndexTuple.update({'({},{})'.format(index+1, ind+1):'({},{})'.format(sqlIndex, sqlInd)})
+                    key = '({},{})'.format(sqlIndex, sqlInd)
+                    self.indexTuple_to_webAddress_list.update({'({},{})'.format(index+1, ind+1) : sqlIndexTuple_to_webAddress_list[key]})
+                    self.indexTuple_to_webAddressIDLIST.update({'({},{})'.format(index+1, ind+1) : sqlIndexTuple_to_WebAddressID_list[key]})
+
 
     # 加载一级目录stackedWIdget，根据数据库的数据来确定其子分支的页数及内容
-    def load_stackWidget1(self, category):
+    def load_stackWidget1(self):
         for i in range(len(self.category)):
             listWidget = ListWidget()
             listWidget.addItems(self.categoryi[i])
@@ -599,32 +585,28 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.listWidget_category_list.append(listWidget)
         self.stackedWidget.setCurrentIndex(1)   # 将当前页设置为除了原始留的一页以外的第一页
 
-    # 加载二级目录stackedWIdget_2，根据数据库的数据来确定其子分支的页数及内容
-    def load_stackWidget2(self, categoryi):
+
+    def load_stackWidget2(self):
         i = 1
-        k = ''
         # 创建sqlIndexTuple对stackedWidget_2的序数
-        for key in self.sqlIndexTuple_to_webAddress.keys():
-            if k == '':
-                k = key
+        for key in self.indexTuple_to_webAddress_list.keys():
             listWidget = ListWidget()
-            listWidget.addItems(self.sqlIndexTuple_to_webAddress[key])
+            listWidget.addItems(self.indexTuple_to_webAddress_list[key])
             listWidget.signal.connect(self.listWidget_webAddress_drop)
             listWidget.doubleClicked.connect(self.listWidget_webAddress_double)
-            # listWidget.currentRowChanged.connect(self.webAddress_widget_row_changed)
             listWidget.customContextMenuRequested.connect(self.listWidget_webAddress_context)
             self.stackedWidget_2.addWidget(listWidget)
             self.listWidget_webAddress_list.append(listWidget)
-            self.sqlIndex_to_webAddress_listWidgetIndex.update({key: i})
+            self.indexTuple_to_webAddress_listWidetIndex.update({key: i})
             i += 1
         key = '({},{})'.format(1, 1)
-        key = self.indexTuple_to_sqlIndexTuple[key]
-        index = self.sqlIndex_to_webAddress_listWidgetIndex[key]
-        self.current_webAddress_list = self.sqlIndexTuple_to_webAddress[key]
+        index = self.indexTuple_to_webAddress_listWidetIndex[key]
+        self.current_webAddress_list = self.indexTuple_to_webAddress_list[key]
         self.stackedWidget_2.setCurrentIndex(index)
         self.stackedWidget_2.setCurrentIndex(index)
 
-    # 导入文本文件操作的函数
+
+    # 导入被点击时
     def file_in(self):
         self.statusbar.showMessage('正在导入数据，请稍等.........')
         fileDialog = QFileDialog(self, filter="文本文件 (*.txt)")
@@ -643,14 +625,16 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         else:
             self.statusbar.showMessage('')
 
-    # 导出操作被点击的函数
+
+    # 导出被点击时
     def file_out(self):
         self.set_out_widget_visible(True)
-        self.textEdit.textChanged.connect(self.textEdit_text_changed)   # 更改文本框内容时会有善意提醒
+        self.textEdit.cursorPositionChanged.connect(self.textEdit_text_changed)   # 更改文本框内容时会有善意提醒
         self.sign_out = 1   # 将导出信号改变
         self.listWidget_category_first.setCurrentRow(-1)  #将当前选中的listwidget条目给释放掉
         self.stackedWidget.setCurrentIndex(0)   # 将显示保留的原始页
         self.stackedWidget_2.setCurrentIndex(0)
+
 
     # 导出按钮被点击时，执行写入操作
     def pushButton_out_clicked(self):
@@ -665,7 +649,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         
     # 取消按钮被点击时
     def pushButton_cancel_clicked(self):
-        self.textEdit.textChanged.disconnect(self.textEdit_text_changed)
+        self.textEdit.cursorPositionChanged.disconnect(self.textEdit_text_changed)
         self.textEdit.clear()
         self.set_out_widget_visible(False)
         self.sign_out = 0
@@ -697,21 +681,20 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         for widget in self.listWidget_webAddress_list:
             self.stackedWidget_2.removeWidget(widget)
         self.listWidget_webAddress_list.clear()
-        self.sqlIndexTuple_to_webAddress.clear()
-        self.indexTuple_to_sqlIndexTuple.clear()
-        self.sqlIndex_to_webAddress_listWidgetIndex.clear()
         self.category.clear()
         self.categoryi.clear()
-        self.sqlIndexTuple_to_WebAddressIDLIST.clear()
         self.current_webAddress_list.clear()
         self.sign_out = 0
         self.index_to_sqlIndex_first_list.clear()
         self.index_to_sqlIndex_second_listes.clear()
+        self.indexTuple_to_webAddress_listWidetIndex.clear()
+        self.indexTuple_to_webAddressIDLIST.clear()
+        self.indexTuple_to_webAddress_list.clear()
 
         # 重新加载
         self.load_Database()
-        self.load_stackWidget1(self.category)
-        self.load_stackWidget2(self.categoryi)
+        self.load_stackWidget1()
+        self.load_stackWidget2()
 
 
 if __name__ == "__main__":

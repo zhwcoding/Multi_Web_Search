@@ -1,14 +1,17 @@
-from PyQt5.QtCore import *
-from PyQt5.QtWidgets import *
-from PyQt5.QtGui import *
-from PyQt5.QtWebEngineWidgets import *
+from PyQt5.QtWidgets import QListWidget, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QSplitter, QApplication
 from PyQt5.QtSql import QSqlDatabase, QSqlQuery
+from PyQt5.QtCore import pyqtSignal, Qt, QUrl
+from PyQt5.QtGui import QIcon
+from PyQt5.QtWebEngineWidgets import QWebEngineView
 
 import os
 import sys
 
 from Ui_showWeb import Ui_MainWindow as Ui_ShowWeb
+
 from custom_widget import LineEdit
+import back_to_first_page_image
+import delete_history_image
 
 
 class Web(QMainWindow, Ui_ShowWeb):
@@ -20,6 +23,10 @@ class Web(QMainWindow, Ui_ShowWeb):
         self.setupUi(self)
         self.tabWidget.removeTab(1)
         self.tabWidget.removeTab(0)
+        if not os.path.exists('./asserts'):
+            os.mkdir('./asserts')
+            back_to_first_page_image.save('asserts/首页.png')
+            delete_history_image.save('asserts/删除历史记录.png')
         self.action_back.setIcon(QIcon('asserts/首页.png'))
         self.action_delete_history.setIcon(QIcon('asserts/删除历史记录.png'))
 
@@ -50,8 +57,9 @@ class Web(QMainWindow, Ui_ShowWeb):
                 query = QSqlQuery(db)
                 query.exec('drop table if exists history')
                 query.exec('create table history(id int primary key, name vhar, url vhar)')
-                for i in range(len(self.webAddress_history_list)):
-                    self.listWidget_history.takeItem(0)
+                # for i in range(len(self.webAddress_history_list)):
+                #     self.listWidget_history.takeItem(0)
+                self.listWidget_history.clear()
                 self.webAddress_history_list.clear()
             db.close()
         
@@ -69,7 +77,6 @@ class Web(QMainWindow, Ui_ShowWeb):
         self.url_changeed()
 
     def setTabText_and_to_history(self, i, browser):
-        print('history')
         title = browser.page().title()
         url = browser.url().toString()
         self.tabWidget.setTabText(i, title[0: 30])
