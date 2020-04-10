@@ -32,11 +32,11 @@ class Web(QMainWindow, Ui_ShowWeb):
 
         self.path = './db/multiWeb_Database.db'
 
-        self.lineEdit_url_list = []
-        self.browser_list = []
-        self.listWidget_list = []
+        self.lineEdit_url_list = [] # 每一个tab的网址框
+        self.browser_list = []  # 每一个tab的webEngineView
+        self.listWidget_list = []   # 每一个tab的目录listWidget
         self.listWidget_history = QListWidget()
-        self.webAddress_LIST = []
+        self.webAddress_LIST = []   # 保存每次主程序发送来的网址数据
         self.webAddress_history_list = []
         
         self.tabWidget.tabCloseRequested.connect(self.tab_close)
@@ -89,7 +89,7 @@ class Web(QMainWindow, Ui_ShowWeb):
         db.setDatabaseName(self.path)
         if db.open():
             query = QSqlQuery(db)
-            query.exec('insert into history values({}, "{}", "{}")'.format(len(self.webAddress_history_list), name, url))
+            query.exec('insert into history values({}, "{}", "{}")'.format(len(self.webAddress_history_list), str(name), str(url)))
         db.close()
 
     def load_history_from_database(self):
@@ -101,8 +101,8 @@ class Web(QMainWindow, Ui_ShowWeb):
             query = QSqlQuery(db)
             query.exec('select name, url from history')
             while query.next():
-                name_list.append(query.value(0))
-                url_list.append(query.value(1))
+                name_list.append(str(query.value(0)))
+                url_list.append(str(query.value(1)))
         db.close()
         return name_list, url_list
 
@@ -120,6 +120,10 @@ class Web(QMainWindow, Ui_ShowWeb):
     
     def tab_close(self, i):
         self.tabWidget.removeTab(i)
+        self.lineEdit_url_list.remove(self.lineEdit_url_list[i])
+        self.browser_list.remove(self.browser_list[i])
+        self.webAddress_LIST.remove(self.webAddress_LIST[i])
+        self.listWidget_list.remove(self.listWidget_list[i])
         if self.tabWidget.count() < 1:
             self.signal_change_stackedWidget.emit()
         
